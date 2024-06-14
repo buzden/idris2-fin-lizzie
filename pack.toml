@@ -1,0 +1,5 @@
+[custom.all.fin-lizzie]
+type = "local"
+path = "."
+ipkg = "fin-lizzie.ipkg"
+test = "tests/tests.ipkg"

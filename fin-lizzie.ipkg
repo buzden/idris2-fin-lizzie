@@ -1,0 +1,14 @@
+package fin-lizzie
+
+authors = "Denis Buzdalov"
+
+brief = "Useful stuff for `Fin` data type"
+
+license = "Apache-2.0"
+
+sourcedir = "src"
+builddir = ".build"
+
+modules = Data.Fin.Lists
+        , Data.Fin.Minus
+        , Data.Fin.ToFin
