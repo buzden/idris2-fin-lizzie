@@ -142,11 +142,11 @@ namespace FinMap
 
   export
   keySet : {n : _} -> FinMap n v -> FinSet n
-  keySet = fromFoldable . map fst . toKVList
+  keySet = fromFoldable . map fst . kvList
   -- we can employ the fact that given list is sorted
 
   export
-  keySetSize : (m : FinMap n v) -> (keySet m).size = length (toKVList m)
+  keySetSize : (m : FinMap n v) -> (keySet m).size = length (kvList m)
   keySetSize _ = believe_me $ Refl {x=Z}
 
 export

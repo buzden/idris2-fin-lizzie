@@ -105,20 +105,20 @@ iList [] = []
 iList (x::xs) = (FZ, x) :: (mapFst FS <$> iList xs)
 
 export %inline
-toKVList : FinMap n v -> List (Fin n, v)
-toKVList = mapMaybe (\(i, mv) => (i,) <$> mv) . iList . unFM
+kvList : FinMap n v -> List (Fin n, v)
+kvList = mapMaybe (\(i, mv) => (i,) <$> mv) . iList . unFM
 
 public export %inline
 (.asKVList) : FinMap n v -> List (Fin n, v)
-(.asKVList) = toKVList
+(.asKVList) = kvList
 
 export
 keys : FinMap n v -> List $ Fin n
-keys = map fst . toKVList
+keys = map fst . kvList
 
 export
 values : FinMap n v -> List v
-values = map snd . toKVList
+values = map snd . kvList
 
 export
 Functor (FinMap n) where
@@ -162,15 +162,15 @@ mergeLeft = mergeWith const
 
 export %inline
 leftMost : FinMap n v -> Maybe (Fin n, v)
-leftMost = head' . toKVList
+leftMost = head' . kvList
 
 export %inline
 rightMost : FinMap n v -> Maybe (Fin n, v)
-rightMost = last' . toKVList
+rightMost = last' . kvList
 
 export
 Interpolation v => Interpolation (FinMap n v) where
-  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map (\(i, v) => "i -> \{v}") . toKVList
+  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map (\(i, v) => "i -> \{v}") . kvList
 
 export
 Eq v => Eq (FinMap n v) where
@@ -186,7 +186,7 @@ export
 
 public export %inline
 size : FinMap n v -> Nat
-size = length . toKVList -- this implementation is to make `asVect` work seamlessly
+size = length . kvList -- this implementation is to make `asVect` work seamlessly
 
 public export %inline
 (.size) : FinMap n v -> Nat
@@ -194,7 +194,7 @@ public export %inline
 
 public export %inline
 (.asKVVect) : (fs : FinMap n v) -> Vect fs.size (Fin n, v)
-(.asKVVect) fs = fromList $ toKVList fs
+(.asKVVect) fs = fromList $ kvList fs
 
 export
 fromSortedMap : {n : _} -> SortedMap (Fin n) v -> FinMap n v
