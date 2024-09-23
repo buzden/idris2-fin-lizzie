@@ -10,5 +10,7 @@ sourcedir = "src"
 builddir = ".build"
 
 modules = Data.Fin.Lists
+        , Data.Fin.Map
         , Data.Fin.Minus
+        , Data.Fin.Set
         , Data.Fin.ToFin
