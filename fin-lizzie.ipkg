@@ -9,7 +9,8 @@ license = "Apache-2.0"
 sourcedir = "src"
 builddir = ".build"
 
-modules = Data.Fin.Lists
+modules = Data.Fin.Interpolation
+        , Data.Fin.Lists
         , Data.Fin.Map
         , Data.Fin.Minus
         , Data.Fin.Set
