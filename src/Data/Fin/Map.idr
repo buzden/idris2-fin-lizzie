@@ -169,8 +169,8 @@ rightMost : FinMap n v -> Maybe (Fin n, v)
 rightMost = last' . kvList
 
 export
-Interpolation v => Interpolation (FinMap n v) where
-  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map (\(i, v) => "i -> \{v}") . kvList
+Interpolation v => Interpolation (Fin n) => Interpolation (FinMap n v) where
+  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map (\(i, v) => "\{i} -> \{v}") . kvList
 
 export
 Eq v => Eq (FinMap n v) where

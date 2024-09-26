@@ -120,8 +120,8 @@ export
   neutral = empty
 
 export
-Interpolation (FinSet n) where
-  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map show . Fin.Set.toList
+Interpolation (Fin n) => Interpolation (FinSet n) where
+  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map interpolate . Fin.Set.toList
 
 export
 null : FinSet n -> Bool
