@@ -125,6 +125,13 @@ Functor (FinMap n) where
   map f = MkFM . map @{Compose} f . unFM
 
 export
+mapWithKey : (Fin n -> v -> w) -> FinMap n v -> FinMap n w
+mapWithKey f = MkFM . vmapI f . unFM where
+  vmapI : forall n. (Fin n -> v -> w) -> Vect n (Maybe v) -> Vect n (Maybe w)
+  vmapI f []      = []
+  vmapI f (x::xs) = map (f FZ) x :: vmapI (f . FS) xs
+
+export
 Foldable (FinMap n) where
   foldr f z = foldr f z . values
   foldl f z = foldl f z . values
@@ -134,6 +141,17 @@ Foldable (FinMap n) where
 export
 Traversable (FinMap n) where
   traverse f = map MkFM . traverse @{Compose} f . unFM
+
+export
+traverseWithKey : Applicative m => (Fin n -> v -> m w) -> FinMap n v -> m $ FinMap n w
+traverseWithKey f = map MkFM . vmapI f . unFM where
+  vmapI : forall n. (Fin n -> v -> m w) -> Vect n (Maybe v) -> m $ Vect n (Maybe w)
+  vmapI f []      = [| [] |]
+  vmapI f (x::xs) = [| traverse (f FZ) x :: vmapI (f . FS) xs |]
+
+public export %inline
+forWithKey : Applicative m => FinMap n v -> (Fin n -> v -> m w) -> m $ FinMap n w
+forWithKey = flip traverseWithKey
 
 export
 Zippable (FinMap n) where
