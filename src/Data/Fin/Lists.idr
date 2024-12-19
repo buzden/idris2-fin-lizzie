@@ -3,6 +3,8 @@ module Data.Fin.Lists
 
 import public Data.Fin
 
+%default total
+
 public export
 rangeFrom0To : Fin n -> List (Fin n)
 rangeFrom0To FZ     = [FZ]
