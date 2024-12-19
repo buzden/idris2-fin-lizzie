@@ -3,6 +3,8 @@ module Data.Fin.Minus
 
 import public Data.Fin
 
+%default total
+
 public export
 (-) : (n : Nat) -> Fin (S n) -> Nat
 n   - FZ   = n

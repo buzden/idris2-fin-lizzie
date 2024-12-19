@@ -1,6 +1,6 @@
 module Data.Fin.Interpolation
 
-import Data.Fin
+import public Data.Fin
 
 %default total
 

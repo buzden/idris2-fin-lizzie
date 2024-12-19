@@ -3,6 +3,8 @@ module Data.Fin.ToFin
 
 import public Data.Fin
 
+%default total
+
 public export
 tryToFit : {to : _} -> Fin from -> Maybe $ Fin to
 tryToFit {to=0}   _      = Nothing
