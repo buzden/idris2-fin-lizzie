@@ -131,6 +131,10 @@ mapWithKey f = MkFM . vmapI f . unFM where
   vmapI f []      = []
   vmapI f (x::xs) = map (f FZ) x :: vmapI (f . FS) xs
 
+export %inline
+mapWithKey' : FinMap n v -> (Fin n -> v -> w) -> FinMap n w
+mapWithKey' = flip mapWithKey
+
 export
 Foldable (FinMap n) where
   foldr f z = foldr f z . values
