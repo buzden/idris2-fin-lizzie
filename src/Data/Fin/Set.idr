@@ -5,9 +5,10 @@
 ||| This can be implemented as simple `Integer` setting and clearing bits, but this seems to work worse in elaborator scripts.
 module Data.Fin.Set
 
-import Data.List
+import Data.Bits
 import Data.Fin.Map
 import Data.SortedMap
+import Data.SortedSet
 import Data.String
 import Data.Vect
 
@@ -15,27 +16,38 @@ import Data.Vect
 
 export
 data FinSet : Nat -> Type where
-  MkFS : Vect n Bool -> FinSet n
+  MkFS : Integer -> FinSet n
+
+mask : (n : Nat) -> Integer
+mask n = (1 `shiftL` n) - 1
 
 %inline
-unFS : FinSet n -> Vect n Bool
+unFS : FinSet n -> Integer
 unFS (MkFS bs) = bs
 
-export %inline
-empty : {n : _} -> FinSet n
-empty = MkFS $ replicate _ False
+%inline
+wrap : (Integer -> Integer) -> FinSet n -> FinSet n
+wrap f $ MkFS x = MkFS $ f x
+
+%inline
+wrap2 : (Integer -> Integer -> Integer) -> FinSet n -> FinSet n -> FinSet n
+wrap2 f (MkFS l) (MkFS r) = MkFS $ f l r
 
 export %inline
-full : {n : _} -> FinSet n
-full = MkFS $ replicate _ True
+empty : FinSet n
+empty = MkFS zeroBits
+
+export %inline
+full : FinSet n
+full = MkFS oneBits
 
 export %inline
 complement : FinSet n -> FinSet n
-complement = MkFS . map not . unFS
+complement = wrap $ Bits.complement
 
 export %inline
 insert : Fin n -> FinSet n -> FinSet n
-insert i = MkFS . replaceAt i True . unFS
+insert i = wrap (`setBit` finToNat i)
 
 export %inline
 insert' : FinSet n -> Fin n -> FinSet n
@@ -43,7 +55,7 @@ insert' = flip insert
 
 export %inline
 delete : Fin n -> FinSet n -> FinSet n
-delete i = MkFS . replaceAt i False . unFS
+delete i = wrap (`clearBit` finToNat i)
 
 export %inline
 delete' : FinSet n -> Fin n -> FinSet n
@@ -51,88 +63,112 @@ delete' = flip delete
 
 export %inline
 contains : Fin n -> FinSet n -> Bool
-contains i = index i . unFS
+contains i = (`testBit` finToNat i) . unFS
 
 export %inline
 contains' : FinSet n -> Fin n -> Bool
 contains' = flip contains
 
--- much more effective implementation exists if we know that given foldable is sorted
 export %inline
-fromFoldable : Foldable f => {n : _} -> f (Fin n) -> FinSet n
-fromFoldable = foldl insert' empty
+fromFoldable : Foldable f => f (Fin n) -> FinSet n
+fromFoldable = foldl insert' $ empty {n}
 
 export %inline
-fromList : {n : _} -> List (Fin n) -> FinSet n
+fromList : List (Fin n) -> FinSet n
 fromList = fromFoldable
 
 export %inline
-toList : FinSet n -> List (Fin n)
-toList = map fst . filter snd . iList . unFS
+toList : {n : _} -> FinSet n -> List (Fin n)
+toList {n=Z}   = const []
+toList {n=S n} = go n last [] . unFS where
+  go : Nat -> Fin (S n) -> List (Fin $ S n) -> Integer -> List (Fin $ S n)
+  go _ FZ        acc i = if testBit i 0 then FZ :: acc else acc
+  go n k@(FS k') acc i = let next = if testBit i n then k :: acc else acc in go (n `minus` 1) (assert_smaller k $ believe_me k') next i
+
+export
+traverse_ : Monad m => {n : _} -> (Fin n -> m b) -> FinSet n -> m ()
+traverse_ {n=Z}       _ = const $ pure ()
+traverse_ {n=n@(S _)} f = go FZ . (mask n .&.) . unFS where
+  go : Fin n -> Integer -> m ()
+  go _   0 = pure ()
+  go idx i = do
+    let %inline next : m ()
+        next = go (believe_me $ FS idx) (assert_smaller i $ i `shiftR` 1)
+    if testBit i 0 then ignore (f idx) >> next else next
 
 public export %inline
-(.asList) : FinSet n -> List (Fin n)
+for_ : Monad m => {n : _} -> FinSet n -> (Fin n -> m b) -> m ()
+for_ = flip traverse_
+
+public export %inline
+(.asList) : {n : _} -> FinSet n -> List (Fin n)
 (.asList) = toList
 
 public export %inline
-size : FinSet n -> Nat
-size = length . toList -- this implementation is to make `asVect` work seamlessly
---size = foldl (\n, b => if b then S n else n) 0 . unFS
+size : {n : _} -> FinSet n -> Nat
+size = length . toList {n} -- this implementation is to make `asVect` work seamlessly
 
 public export %inline
-(.size) : FinSet n -> Nat
-(.size) = size
+(.size) : {n : _} -> FinSet n -> Nat
+(.size) = size {n}
 
 public export %inline
-(.asVect) : (fs : FinSet n) -> Vect fs.size (Fin n)
+(.asVect) : {n : _} -> (fs : FinSet n) -> Vect fs.size (Fin n)
 (.asVect) fs = fromList $ toList fs
 
 export %inline
 union : FinSet n -> FinSet n -> FinSet n
-union = MkFS .: zipWith (\x, y => x || y) `on` unFS
+union = wrap2 (.|.)
 
 export %inline
 difference : FinSet n -> FinSet n -> FinSet n
-difference = MkFS .: zipWith (\l, r => l && not r) `on` unFS
+difference (MkFS l) (MkFS r) = MkFS $ l .&. complement r
 
 export %inline
 symDifference : FinSet n -> FinSet n -> FinSet n
-symDifference = MkFS .: zipWith (\l, r => l /= r) `on` unFS
+symDifference = wrap2 xor
 
 export %inline
-insersection : FinSet n -> FinSet n -> FinSet n
-insersection = MkFS .: zipWith (\x, y => x && y) `on` unFS
+intersection : FinSet n -> FinSet n -> FinSet n
+intersection = wrap2 (.&.)
 
 export %inline
-leftMost : FinSet n -> Maybe $ Fin n
-leftMost = findIndex id . unFS
+leftMost : {n : _} -> FinSet n -> Maybe $ Fin n
+leftMost = go n . unFS where
+  go : (n : Nat) -> Integer -> Maybe $ Fin n
+  go _     0 = Nothing
+  go 0     _ = Nothing
+  go (S n) x = if testBit x 0 then Just FZ else FS <$> go n (x `shiftR` 1)
 
 export %inline
-rightMost : FinSet n -> Maybe $ Fin n
-rightMost = last' . findIndices id . unFS
+rightMost : {n : _} -> FinSet n -> Maybe $ Fin n
+rightMost = go n . unFS where
+  go : (n : Nat) -> Integer -> Maybe $ Fin n
+  go _     0 = Nothing
+  go 0     _ = Nothing
+  go (S n) x = if testBit x n then Just last else weaken <$> go n x
 
 export
 Semigroup (FinSet n) where
-  (<+>) = union
+  (<+>) = union {n}
 
 export
-{n : _} -> Monoid (FinSet n) where
-  neutral = empty
+Monoid (FinSet n) where
+  neutral = empty {n}
 
 export
-Interpolation (Fin n) => Interpolation (FinSet n) where
-  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map interpolate . Fin.Set.toList
+{n : _} -> Interpolation (Fin n) => Interpolation (FinSet n) where
+  interpolate = ("{" ++) . (++ "}") . joinBy ", " . map interpolate . Fin.Set.toList {n}
 
 export
-null : FinSet n -> Bool
-null = all not . unFS
+null : {n : _} -> FinSet n -> Bool
+null (MkFS x) = mask n .&. x == 0
 
 namespace SortedMap
 
   export
   keySet : {n : _} -> SortedMap (Fin n) v -> FinSet n
   keySet = fromFoldable . map fst . SortedMap.toList
-  -- we can employ the fact that given list is sorted
 
   export
   keySetSize : (m : SortedMap (Fin n) v) -> (keySet m).size = length (SortedMap.toList m)
@@ -143,22 +179,25 @@ namespace FinMap
   export
   keySet : {n : _} -> FinMap n v -> FinSet n
   keySet = fromFoldable . map fst . kvList
-  -- we can employ the fact that given list is sorted
 
   export
   keySetSize : (m : FinMap n v) -> (keySet m).size = length (kvList m)
   keySetSize _ = believe_me $ Refl {x=Z}
 
-export
-singleton : {n : _} -> Fin n -> FinSet n
-singleton = MkFS . go where
-  go : {n : _} -> Fin n -> Vect n Bool
-  go FZ     = True  :: replicate _ False
-  go (FS i) = False :: go i
+namespace SortedSet
+
+  export %inline
+  toSortedSet : {n : _} -> FinSet n -> SortedSet (Fin n)
+  toSortedSet = fromList . toList
 
 export
-weakenToSuper : {n : _} -> {i : Fin n} -> FinSet (finToNat i) -> FinSet n
-weakenToSuper = MkFS . go . unFS where
-  go : {n : _} -> {i : Fin n} -> Vect (finToNat i) Bool -> Vect n Bool
-  go {i=FZ}   []      = replicate _ False
-  go {i=FS i} (x::xs) = x :: go xs
+singleton : Fin n -> FinSet n
+singleton = MkFS . setBit zeroBits . finToNat
+
+export
+fit : {n : _} -> FinSet n -> FinSet m
+fit (MkFS x) = MkFS $ mask n .&. x
+
+export %inline
+weakenToSuper : {i : _} -> FinSet (finToNat i) -> FinSet n
+weakenToSuper = fit
