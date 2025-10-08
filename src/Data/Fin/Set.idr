@@ -100,6 +100,18 @@ public export %inline
 for_ : Monad m => {n : _} -> FinSet n -> (Fin n -> m b) -> m ()
 for_ = flip traverse_
 
+export
+foldl : {n : _} -> (a -> Fin n -> a) -> a -> FinSet n -> a
+foldl {n=Z}       _ ini = const ini
+foldl {n=n@(S _)} f ini = go FZ ini . unFS where
+  go : Fin n -> a -> Integer -> a
+  go _   curr 0 = curr
+  go idx curr i = let next = if testBit i 0 then f curr idx else curr in go (believe_me $ FS idx) next (assert_smaller i $ i `shiftR` 1)
+
+public export
+foldMap : Monoid m => {n : _} -> (Fin n -> m) -> FinSet n -> m
+foldMap f = foldl (\c => (c <+>) . f) neutral
+
 public export %inline
 (.asList) : {n : _} -> FinSet n -> List (Fin n)
 (.asList) = toList
