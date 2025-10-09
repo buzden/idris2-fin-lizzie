@@ -161,6 +161,18 @@ rightMost = go n . unFS where
   go (S n) x = if testBit x n then Just last else weaken <$> go n x
 
 export
+{n : _} -> Show (FinSet n) where
+  showPrec d s = showCon d "fromList" $ showArg $ toList s
+
+export
+{n : _} -> Eq (FinSet n) where
+  (==) = (==) `on` (mask n .|.) . unFS
+
+export
+{n : _} -> Ord (FinSet n) where
+  compare = comparing $ (mask n .|.) . unFS
+
+export
 Semigroup (FinSet n) where
   (<+>) = union {n}
 
