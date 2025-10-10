@@ -166,11 +166,11 @@ export
 
 export
 {n : _} -> Eq (FinSet n) where
-  (==) = (==) `on` (mask n .|.) . unFS
+  (==) = (==) `on` (mask n .&.) . unFS
 
 export
 {n : _} -> Ord (FinSet n) where
-  compare = comparing $ (mask n .|.) . unFS
+  compare = comparing $ (mask n .&.) . unFS
 
 export
 Semigroup (FinSet n) where
